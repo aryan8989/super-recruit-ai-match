@@ -11,6 +11,30 @@ interface SearchBarProps {
   isSearching: boolean;
 }
 
+// Fix TypeScript errors with proper type declaration
+interface SpeechRecognitionEvent extends Event {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+// Define SpeechRecognition interface
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: Event) => void;
+  onend: (event: Event) => void;
+}
+
 const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
   const [query, setQuery] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -20,14 +44,17 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
+    // Fix TypeScript errors with proper type checking
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+      const SpeechRecognitionConstructor = (window as any).SpeechRecognition || 
+                                           (window as any).webkitSpeechRecognition;
+      
+      recognitionRef.current = new SpeechRecognitionConstructor() as SpeechRecognition;
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = "en-US";
       
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         setQuery(transcript);
         setIsRecording(false);
@@ -97,7 +124,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholderText}
-          className="pr-24 h-12 text-base"
+          className="pr-24 h-14 text-base bg-white/70 backdrop-blur-sm border-white/20 shadow-lg"
           disabled={!isConfigured || isSearching}
         />
         
@@ -136,12 +163,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
   );
 };
 
-// TypeScript fix for Speech Recognition API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
+// Remove global TypeScript declaration as we've properly typed it above
 
 export default SearchBar;
