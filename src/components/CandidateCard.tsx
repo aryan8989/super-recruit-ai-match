@@ -18,7 +18,6 @@ interface CandidateCardProps {
 
 const CandidateCard: React.FC<CandidateCardProps> = ({ candidate }) => {
   const [expanded, setExpanded] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const { toast } = useToast();
 
   const handleContactCandidate = () => {

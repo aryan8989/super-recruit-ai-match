@@ -74,62 +74,96 @@ export async function parseQueryWithAI(query: string, apiKey: string): Promise<S
     
     const systemPrompt = `You are an AI recruiter assistant. Given a plain-English hiring request, extract structured data. Output JSON with: role, skills (as a list), location, job_type (full-time, part-time, freelance, contract), seniority, and notes. Prioritize keywords related to tools, methods, and project types.`;
     
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: query,
-          },
-        ],
-        temperature: 0.1,
-      }),
-    });
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: query,
+            },
+          ],
+          temperature: 0.1,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(errorData.error?.message || "Failed to parse query");
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        throw new Error(errorData.error?.message || "Failed to parse query");
+      }
+
+      const data = await response.json();
+      console.log("OpenAI API response:", data);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Invalid response from OpenAI API");
+      }
+
+      const parsedResponse = JSON.parse(data.choices[0].message.content);
+      
+      return {
+        role: parsedResponse.role || "",
+        skills: parsedResponse.skills || [],
+        location: parsedResponse.location || "",
+        job_type: parsedResponse.job_type || "",
+        seniority: parsedResponse.seniority || "",
+        notes: parsedResponse.notes || "",
+      };
+    } catch (apiError) {
+      console.error("API call error:", apiError);
+      throw apiError;
     }
-
-    const data = await response.json();
-    console.log("OpenAI API response:", data);
-    
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error("Invalid response from OpenAI API");
-    }
-
-    const parsedResponse = JSON.parse(data.choices[0].message.content);
-    
-    return {
-      role: parsedResponse.role || "",
-      skills: parsedResponse.skills || [],
-      location: parsedResponse.location || "",
-      job_type: parsedResponse.job_type || "",
-      seniority: parsedResponse.seniority || "",
-      notes: parsedResponse.notes || "",
-    };
   } catch (error) {
     console.error("Error parsing query with AI:", error);
     
-    // Fallback parsing
-    return {
-      role: query.includes("developer") ? "Developer" : query.includes("designer") ? "Designer" : "Any",
-      skills: query.split(" ").filter(word => word.length > 3),
-      location: query.includes("remote") ? "Remote" : "",
-      job_type: query.includes("freelance") ? "Freelance" : query.includes("contract") ? "Contract" : "Full-Time",
-      seniority: query.includes("senior") ? "Senior" : query.includes("junior") ? "Junior" : "Mid",
-      notes: query,
+    // Fallback parsing - more robust
+    const fallbackQuery = {
+      role: "",
+      skills: [] as string[],
+      location: "",
+      job_type: "",
+      seniority: "",
+      notes: query, // Keep original query in notes for keyword matching
     };
+    
+    // Basic keyword extraction
+    const queryLower = query.toLowerCase();
+    
+    // Extract role
+    if (queryLower.includes("developer")) fallbackQuery.role = "Developer";
+    else if (queryLower.includes("designer")) fallbackQuery.role = "Designer";
+    else if (queryLower.includes("editor")) fallbackQuery.role = "Editor";
+    else if (queryLower.includes("artist")) fallbackQuery.role = "Artist";
+    
+    // Extract skills - look for common AI tools
+    const potentialSkills = ["midjourney", "runway", "runwayml", "deforum", "stable diffusion", "blender", "after effects", "photoshop", "figma", "ai", "3d", "video", "design"];
+    fallbackQuery.skills = potentialSkills.filter(skill => queryLower.includes(skill.toLowerCase()));
+    
+    // Extract location
+    if (queryLower.includes("remote")) fallbackQuery.location = "Remote";
+    
+    // Extract job type
+    if (queryLower.includes("freelance")) fallbackQuery.job_type = "Freelance";
+    else if (queryLower.includes("contract")) fallbackQuery.job_type = "Contract";
+    else if (queryLower.includes("full-time") || queryLower.includes("full time")) fallbackQuery.job_type = "Full-Time";
+    else if (queryLower.includes("part-time") || queryLower.includes("part time")) fallbackQuery.job_type = "Part-Time";
+    
+    // Extract seniority
+    if (queryLower.includes("senior")) fallbackQuery.seniority = "Senior";
+    else if (queryLower.includes("junior")) fallbackQuery.seniority = "Junior";
+    else if (queryLower.includes("mid")) fallbackQuery.seniority = "Mid";
+    
+    return fallbackQuery;
   }
 }

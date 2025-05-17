@@ -140,7 +140,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
           value={query}
           onChange={handleInputChange}
           placeholder={placeholderText}
-          className="pr-24 h-14 text-base bg-white/70 backdrop-blur-sm border-white/20 shadow-lg"
+          className="pr-28 h-14 text-base bg-white/70 backdrop-blur-sm border-white/20 shadow-lg text-ellipsis overflow-hidden"
           disabled={!isConfigured || isSearching}
         />
         
@@ -159,7 +159,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
           <Button
             type="submit"
             disabled={!query.trim() || !isConfigured || isSearching}
-            className="gap-2"
+            className="gap-2 whitespace-nowrap"
           >
             {isSearching ? (
               <>
