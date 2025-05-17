@@ -5,41 +5,43 @@ export function matchCandidates(candidates: Candidate[], query: SearchQuery): Ca
   return candidates.map(candidate => {
     let score = 0;
     
-    // Role match
-    if (candidate.role.toLowerCase().includes(query.role.toLowerCase())) {
+    // Role match - case insensitive
+    if (query.role && candidate.role.toLowerCase().includes(query.role.toLowerCase())) {
       score += 15;
     }
     
-    // Skills match
-    query.skills.forEach(skill => {
-      if (candidate.skills.some(s => s.toLowerCase().includes(skill.toLowerCase()))) {
-        score += 10;
-      }
-      
-      // Check if skills are mentioned in project tools
-      candidate.projects.forEach(project => {
-        if (project.tools_used.some(tool => tool.toLowerCase().includes(skill.toLowerCase()))) {
+    // Skills match - case insensitive
+    if (query.skills && query.skills.length > 0) {
+      query.skills.forEach(skill => {
+        if (candidate.skills.some(s => s.toLowerCase().includes(skill.toLowerCase()))) {
           score += 10;
         }
         
-        // Check if skills are mentioned in project descriptions
-        if (project.description.toLowerCase().includes(skill.toLowerCase())) {
-          score += 5;
-        }
+        // Check if skills are mentioned in project tools
+        candidate.projects.forEach(project => {
+          if (project.tools_used.some(tool => tool.toLowerCase().includes(skill.toLowerCase()))) {
+            score += 10;
+          }
+          
+          // Check if skills are mentioned in project descriptions
+          if (project.description.toLowerCase().includes(skill.toLowerCase())) {
+            score += 5;
+          }
+        });
       });
-    });
+    }
     
-    // Location match
+    // Location match - case insensitive
     if (query.location && candidate.location.toLowerCase().includes(query.location.toLowerCase())) {
       score += 10;
     }
     
-    // Job type match
+    // Job type match - case insensitive
     if (query.job_type && candidate.job_type.toLowerCase().includes(query.job_type.toLowerCase())) {
       score += 10;
     }
     
-    // Seniority match
+    // Seniority match - case insensitive
     if (query.seniority && candidate.seniority.toLowerCase().includes(query.seniority.toLowerCase())) {
       score += 5;
     }
@@ -94,10 +96,17 @@ export async function parseQueryWithAI(query: string, apiKey: string): Promise<S
       }),
     });
 
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.error?.message || "Failed to parse query");
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(errorData.error?.message || "Failed to parse query");
+    }
+
+    const data = await response.json();
+    console.log("OpenAI API response:", data);
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error("Invalid response from OpenAI API");
     }
 
     const parsedResponse = JSON.parse(data.choices[0].message.content);

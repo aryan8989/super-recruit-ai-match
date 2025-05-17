@@ -104,9 +104,25 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim() && !isSearching) {
+    if (query.trim() && !isSearching && isConfigured) {
       onSearch(query.trim());
+    } else if (!isConfigured) {
+      toast({
+        title: "API Key Required",
+        description: "Please configure your API key in settings first",
+        variant: "destructive",
+      });
+    } else if (!query.trim()) {
+      toast({
+        title: "Empty Search",
+        description: "Please enter a search query",
+        variant: "destructive",
+      });
     }
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
   };
   
   const placeholderText = isConfigured 
@@ -122,7 +138,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
         <Input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleInputChange}
           placeholder={placeholderText}
           className="pr-24 h-14 text-base bg-white/70 backdrop-blur-sm border-white/20 shadow-lg"
           disabled={!isConfigured || isSearching}
@@ -162,7 +178,5 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isSearching }) => {
     </form>
   );
 };
-
-// Remove global TypeScript declaration as we've properly typed it above
 
 export default SearchBar;
